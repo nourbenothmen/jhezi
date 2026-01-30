@@ -1,3 +1,9 @@
+type Product = {
+  id: string;
+  title: string;
+  image: string;
+  categoryId: string;
+};
 import React, { useState } from 'react';
 import {
   View,
@@ -9,7 +15,12 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { Modal, Pressable } from 'react-native';
+// Dans liste-jhez.tsx
+import { BuyModal } from './buy-modal';
+
 
 /* ===================== CATEGORIES ===================== */
 
@@ -89,7 +100,12 @@ const PRODUCTS = [
 
 /* ===================== CARD ===================== */
 
-const JhezCard = ({ item }) => {
+interface JhezCardProps {
+  item: Product;
+  onAdd: (product: Product) => void;  // ← nouvelle prop typée
+}
+
+const JhezCard = ({ item, onAdd }: JhezCardProps) => {
   return (
     <View style={styles.card}>
       {/* Icône boutique à gauche */}
@@ -100,7 +116,7 @@ const JhezCard = ({ item }) => {
       {/* Conteneur texte + image */}
       <View style={styles.middleContainer}>
         <View style={styles.textContainer}>
-          <Text style={styles.cardTitle} numberOfLines={2}>
+          <Text style={styles.cardTitle} numberOfLines={2} ellipsizeMode="tail">
             {item.title}
           </Text>
           <Text style={styles.cardSubtitle}>
@@ -116,8 +132,8 @@ const JhezCard = ({ item }) => {
       </View>
 
       {/* Bouton + à droite */}
-      <TouchableOpacity style={styles.addButton}>
-        <Ionicons name="add" size={28} color="#8b5a8a" />
+      <TouchableOpacity style={styles.addButton} onPress={() => onAdd(item)}>
+        <Ionicons name="add" size={28} color="#fff" />
       </TouchableOpacity>
     </View>
   );
@@ -127,15 +143,30 @@ const JhezCard = ({ item }) => {
 export default function ListeJhez() {
   const router = useRouter();
   const { category } = useLocalSearchParams();
+  //const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   const [selectedCategory, setSelectedCategory] = useState('1');
   const [search, setSearch] = useState('');
+  // 👇 état pour afficher la modale
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [buyModalVisible, setBuyModalVisible] = useState(false);
+  const [currentProduct, setCurrentProduct] = useState<Product | null>(null);
+
+const openBuyModal = (product: Product) => {
+  setCurrentProduct(product);
+  setBuyModalVisible(true);
+};
 
 const filteredProducts = PRODUCTS.filter(p =>
   p.categoryId === selectedCategory &&
   p.title.includes(search)
 );
 
+const openModal = (product: Product) => {
+  setSelectedProduct(product);
+  setModalVisible(true);
+};
 
 return (
   <View style={styles.container}>
@@ -215,14 +246,27 @@ return (
 
       {/* Contenu - liste des cartes */}
 <FlatList
-  key="one-column"   // 🔥 TRÈS IMPORTANT
-  data={filteredProducts}
-  keyExtractor={(item) => item.id}
-  renderItem={({ item }) => <JhezCard item={item} />}
-  showsVerticalScrollIndicator={false}
-  contentContainerStyle={{
-    paddingHorizontal: 16,
-    paddingBottom: 24,
+        key="one-column"
+        data={filteredProducts}
+        keyExtractor={(item) => item.id}
+      renderItem={({ item }) => (
+    <JhezCard item={item} onAdd={() => openBuyModal(item)} />
+  )}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 }}
+      />
+      <BuyModal
+  visible={buyModalVisible}
+  onClose={() => setBuyModalVisible(false)}
+  product={{
+    title: currentProduct?.title || '',
+    image: currentProduct?.image || '',
+    recommendedQty: 2, // ou currentProduct?.recommendedQty || 1
+  }}
+  onConfirm={(data) => {
+    console.log('Données saisies :', data);
+    // → Ici : appel API, ajout au panier, etc.
+    setBuyModalVisible(false);
   }}
 />
 
@@ -543,6 +587,31 @@ addButton: {
 categoryListWrapper: {
   height: 120,
 }
+,
+//modal styles
+modalOverlay: {
+  flex: 1,
+  backgroundColor: 'rgba(0,0,0,0.5)',
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+
+modalContent: {
+  width: '85%',
+  backgroundColor: '#fff',
+  borderRadius: 16,
+  padding: 20,
+  alignItems: 'center',
+},
+
+modalButton: {
+  flex: 1,
+  backgroundColor: '#777',
+  paddingVertical: 10,
+  borderRadius: 12,
+  alignItems: 'center',
+},
+
 
 
 });
